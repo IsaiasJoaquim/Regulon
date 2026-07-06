@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Regulon</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+  </head>
+  <body>
+    <div id="error-log" style="color: red; background: #fee; padding: 10px; font-family: monospace; white-space: pre-wrap; z-index: 9999; position: relative;"></div>
+    <script>
+      window.onerror = function(message, source, lineno, colno, error) {
+        document.getElementById('error-log').innerText += 'ERROR: ' + message + '\n' + (error ? error.stack : '') + '\n\n';
+      };
+      window.addEventListener('unhandledrejection', function(event) {
+        document.getElementById('error-log').innerText += 'PROMISE REJECTION: ' + (event.reason ? event.reason.stack || event.reason : 'Unknown reason') + '\n\n';
+      });
+      // also hook console.error
+      const originalError = console.error;
+      console.error = function(...args) {
+        document.getElementById('error-log').innerText += 'CONSOLE.ERROR: ' + args.join(' ') + '\n\n';
+        originalError.apply(console, args);
+      };
+    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/start.tsx"></script>
+  </body>
+</html>

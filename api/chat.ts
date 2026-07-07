@@ -22,7 +22,7 @@ export default async function handler(req: any, res: any) {
     const apiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
 
     const gateway = createOpenAI({ baseURL: "https://openrouter.ai/api/v1", apiKey });
-    const model = gateway("google/gemini-2.5-flash:free");
+    const model = gateway("google/gemini-2.5-flash");
 
     let filteredCorpus = data.corpus || [];
     try {

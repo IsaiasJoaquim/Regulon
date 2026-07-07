@@ -145,10 +145,13 @@ function Obligations() {
               <CardContent className="p-0">
                 <div className="border-t">
                   {items.map((r) => (
-                    <button
+                    <div
                       key={r.o.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => setActive({ c: r.c, o: r.o })}
-                      className="w-full text-left px-4 py-3 border-b last:border-b-0 hover:bg-secondary/50 transition-colors flex items-start gap-3"
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActive({ c: r.c, o: r.o }); }}
+                      className="w-full text-left px-4 py-3 border-b last:border-b-0 hover:bg-secondary/50 transition-colors flex items-start gap-3 cursor-pointer"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -162,7 +165,7 @@ function Obligations() {
                         </div>
                       </div>
                       <Badge variant="outline" className={`${STATUS_CLR[r.status]} shrink-0`}>{STATUS_LABEL[r.status]}</Badge>
-                    </button>
+                    </div>
                   ))}
                 </div>
               </CardContent>

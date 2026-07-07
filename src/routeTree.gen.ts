@@ -9,19 +9,12 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ObligationsRouteImport } from './routes/obligations'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IngestRouteImport } from './routes/ingest'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiChatRouteImport } from './routes/api/chat'
 
-const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
-  id: '/sitemap.xml',
-  path: '/sitemap.xml',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ObligationsRoute = ObligationsRouteImport.update({
   id: '/obligations',
   path: '/obligations',
@@ -47,11 +40,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiChatRoute = ApiChatRouteImport.update({
-  id: '/api/chat',
-  path: '/api/chat',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -59,8 +47,6 @@ export interface FileRoutesByFullPath {
   '/ingest': typeof IngestRoute
   '/login': typeof LoginRoute
   '/obligations': typeof ObligationsRoute
-  '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/api/chat': typeof ApiChatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -68,8 +54,6 @@ export interface FileRoutesByTo {
   '/ingest': typeof IngestRoute
   '/login': typeof LoginRoute
   '/obligations': typeof ObligationsRoute
-  '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/api/chat': typeof ApiChatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -78,37 +62,13 @@ export interface FileRoutesById {
   '/ingest': typeof IngestRoute
   '/login': typeof LoginRoute
   '/obligations': typeof ObligationsRoute
-  '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/api/chat': typeof ApiChatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/chat'
-    | '/ingest'
-    | '/login'
-    | '/obligations'
-    | '/sitemap.xml'
-    | '/api/chat'
+  fullPaths: '/' | '/chat' | '/ingest' | '/login' | '/obligations'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/chat'
-    | '/ingest'
-    | '/login'
-    | '/obligations'
-    | '/sitemap.xml'
-    | '/api/chat'
-  id:
-    | '__root__'
-    | '/'
-    | '/chat'
-    | '/ingest'
-    | '/login'
-    | '/obligations'
-    | '/sitemap.xml'
-    | '/api/chat'
+  to: '/' | '/chat' | '/ingest' | '/login' | '/obligations'
+  id: '__root__' | '/' | '/chat' | '/ingest' | '/login' | '/obligations'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -117,19 +77,10 @@ export interface RootRouteChildren {
   IngestRoute: typeof IngestRoute
   LoginRoute: typeof LoginRoute
   ObligationsRoute: typeof ObligationsRoute
-  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
-  ApiChatRoute: typeof ApiChatRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/sitemap.xml': {
-      id: '/sitemap.xml'
-      path: '/sitemap.xml'
-      fullPath: '/sitemap.xml'
-      preLoaderRoute: typeof SitemapDotxmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/obligations': {
       id: '/obligations'
       path: '/obligations'
@@ -165,13 +116,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/chat': {
-      id: '/api/chat'
-      path: '/api/chat'
-      fullPath: '/api/chat'
-      preLoaderRoute: typeof ApiChatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -181,19 +125,7 @@ const rootRouteChildren: RootRouteChildren = {
   IngestRoute: IngestRoute,
   LoginRoute: LoginRoute,
   ObligationsRoute: ObligationsRoute,
-  SitemapDotxmlRoute: SitemapDotxmlRoute,
-  ApiChatRoute: ApiChatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.tsx'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

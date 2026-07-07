@@ -8,8 +8,6 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 import { addCircular, slugify, type Circular, type Obligation } from "@/lib/store";
-import { extractObligations, fetchCircular, uploadPdf } from "@/lib/compliance.functions";
-import { useServerFn } from "@tanstack/react-start";
 import { Loader2, Sparkles, ExternalLink, UploadCloud } from "lucide-react";
 
 export const Route = createFileRoute("/ingest")({
@@ -53,10 +51,6 @@ Investment advisers shall not receive any consideration by way of remuneration, 
 
 function Ingest() {
   const navigate = useNavigate();
-  const extract = useServerFn(extractObligations);
-  const fetchC = useServerFn(fetchCircular);
-  const uploadP = useServerFn(uploadPdf);
-
   const [title, setTitle] = useState("");
   const [intermediary, setIntermediary] = useState<"stockbroker" | "investment_adviser" | "both">("stockbroker");
   const [url, setUrl] = useState("");
@@ -67,9 +61,15 @@ function Ingest() {
     if (!url) return;
     setBusy("fetching");
     try {
-      const res = await fetchC({ data: { url } });
-      setText(res.text);
-      toast.success(`Fetched ${res.text.length.toLocaleString()} chars from URL`);
+      const response = await fetch("/api/fetch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Fetch failed");
+      setText(data.text);
+      toast.success(`Fetched ${data.text.length.toLocaleString()} chars from URL`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Fetch failed");
     } finally {
@@ -87,17 +87,38 @@ function Ingest() {
     
     setBusy("uploading");
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await uploadP({ data: formData });
-      setText(res.text);
-      if (!title) setTitle(file.name.replace(".pdf", ""));
-      toast.success(`Extracted ${res.text.length.toLocaleString()} chars from PDF`);
+      const arrayBuffer = await file.arrayBuffer();
+      // Use FileReader for robust base64 conversion of large files in browser
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const base64 = (event.target?.result as string).split(',')[1];
+          const response = await fetch("/api/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ base64 })
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "Upload failed");
+          setText(data.text);
+          if (!title) setTitle(file.name.replace(".pdf", ""));
+          toast.success(`Extracted ${data.text.length.toLocaleString()} chars from PDF`);
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "PDF extraction failed");
+        } finally {
+          setBusy("");
+          e.target.value = '';
+        }
+      };
+      reader.onerror = () => {
+        toast.error("Failed to read file");
+        setBusy("");
+        e.target.value = '';
+      };
+      reader.readAsDataURL(file);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "PDF extraction failed");
-    } finally {
+      toast.error(err instanceof Error ? err.message : "PDF processing failed");
       setBusy("");
-      // Reset input
       e.target.value = '';
     }
   }
@@ -117,7 +138,7 @@ function Ingest() {
     }
     setBusy("extracting");
     try {
-      const response = await fetch("/local-api/extract", {
+      const response = await fetch("/api/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: title.trim(), intermediary, text })

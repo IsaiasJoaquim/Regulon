@@ -6,8 +6,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { useStore } from "@/lib/store";
 import ReactMarkdown from "react-markdown";
 import { Send, Sparkles, Bot, User } from "lucide-react";
-import { useServerFn } from "@tanstack/react-start";
-import { askCopilot } from "@/lib/compliance.functions";
 
 export const Route = createFileRoute("/chat")({
   component: Chat,
@@ -27,7 +25,6 @@ function Chat() {
   const [status, setStatus] = useState<"idle" | "submitted" | "streaming" | "error">("idle");
   const [error, setError] = useState<Error | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const ask = useServerFn(askCopilot);
 
   const isLoading = status === "submitted" || status === "streaming";
 
@@ -46,7 +43,7 @@ function Chat() {
     setError(null);
     
     try {
-      const response = await fetch("/local-api/chat", {
+      const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: newMessages, corpus })

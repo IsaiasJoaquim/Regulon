@@ -1,5 +1,9 @@
-import { generateText, embed } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
+const MODELS = [
+  "google/gemini-2.0-flash-exp:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "google/gemini-2.5-flash",
+  "openai/gpt-4o-mini"
+];
 
 function cosineSimilarity(vecA: number[], vecB: number[]) {
   if (!vecA || !vecB || vecA.length !== vecB.length || vecA.length === 0) return 0;
@@ -21,32 +25,13 @@ export default async function handler(req: any, res: any) {
     const data = req.body;
     const apiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
 
-    const gateway = createOpenAI({ baseURL: "https://openrouter.ai/api/v1", apiKey });
-    const model = gateway("google/gemini-2.5-flash");
+    if (!apiKey) {
+      return res.status(500).json({ error: "Missing OPENAI_API_KEY environment variable" });
+    }
 
+    // Build system prompt with corpus
     let filteredCorpus = data.corpus || [];
-    try {
-      const lastMessage = data.messages[data.messages.length - 1];
-      if (lastMessage.role === "user" && data.corpus?.length > 0) {
-        const text = lastMessage.content;
-        try {
-          const { embedding: queryEmbedding } = await embed({ model: gateway("google/text-embedding-004"), value: text });
-          const allObs = data.corpus.flatMap((c: any) => c.obligations.map((o: any) => ({ circular: c, ob: o }))).filter((i: any) => i.ob.embedding?.length > 0);
-          if (allObs.length > 0) {
-            const scored = allObs.map((i: any) => ({ ...i, score: cosineSimilarity(queryEmbedding, i.ob.embedding) })).sort((a: any, b: any) => b.score - a.score).slice(0, 10);
-            const cMap = new Map();
-            for (const { circular, ob } of scored) {
-              if (!cMap.has(circular.id)) cMap.set(circular.id, { ...circular, obligations: [] });
-              cMap.get(circular.id).obligations.push(ob);
-            }
-            filteredCorpus = Array.from(cMap.values());
-          }
-        } catch (e) {
-          console.warn("RAG skipped:", e);
-        }
-      }
-    } catch (e) {}
-
+    
     const base = `You are an AI compliance assistant for Indian securities market intermediaries (SEBI regulated). You help compliance teams understand their obligations, map them to controls, and answer regulatory questions. Always ground answers in the corpus, cite obligations, and be concise.`;
     let system = base + `\n\nNo circulars ingested.`;
     if (filteredCorpus.length > 0) {
@@ -54,15 +39,49 @@ export default async function handler(req: any, res: any) {
       system = `${base}\n\n=== INGESTED SEBI CORPUS ===\n${summary}\n=== END CORPUS ===`;
     }
 
-    const result = await generateText({
-      model,
-      system,
-      messages: data.messages.map((m: any) => ({ role: m.role, content: m.content })),
-      maxTokens: 1500,
-    });
-    
-    return res.status(200).json({ text: result.text });
+    const messages = [
+      { role: "system", content: system },
+      ...data.messages.map((m: any) => ({ role: m.role, content: m.content }))
+    ];
+
+    let lastError = "";
+
+    for (const modelId of MODELS) {
+      try {
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: modelId,
+            messages,
+            max_tokens: 1500,
+          }),
+        });
+
+        if (!response.ok) {
+          lastError = `${modelId}: ${response.status} ${await response.text()}`;
+          console.error(`[chat] Model ${modelId} failed: ${lastError}`);
+          continue;
+        }
+
+        const json = await response.json();
+        const content = json.choices?.[0]?.message?.content;
+        if (content) {
+          console.log(`[chat] Model ${modelId} responded OK`);
+          return res.status(200).json({ text: content });
+        }
+        lastError = `${modelId}: no content in response`;
+      } catch (e: any) {
+        lastError = `${modelId}: ${e.message}`;
+        console.error(`[chat] Model ${modelId} exception: ${e.message}`);
+      }
+    }
+
+    return res.status(500).json({ error: `All AI models failed. Last: ${lastError}` });
   } catch (e: any) {
-    return res.status(500).json({ error: `Copilot falhou: ${e.message}` });
+    return res.status(500).json({ error: `Copilot failed: ${e.message}` });
   }
 }

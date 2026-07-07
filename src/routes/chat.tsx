@@ -122,8 +122,8 @@ function Chat() {
                     {isUser ? (
                       <div className="text-sm whitespace-pre-wrap">{text}</div>
                     ) : (
-                      <div className="prose-chat text-sm">
-                        <ReactMarkdown>{text || "…"}</ReactMarkdown>
+                      <div className="prose-chat text-sm" key={`md-${m.id}`}>
+                        <ReactMarkdown key={m.id}>{text || "…"}</ReactMarkdown>
                       </div>
                     )}
                   </div>
